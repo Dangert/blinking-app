@@ -1,45 +1,108 @@
 import React, { useEffect, useState, useRef } from "react";
-import { StyleSheet, Text, View, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Platform, StatusBar } from 'react-native';
 import * as FaceDetector from 'expo-face-detector';
 import { Camera } from 'expo-camera';
 import * as Permissions from 'expo-permissions';
 import { DeviceMotion } from 'expo-sensors';
-const { width: winWidth, height: winHeight } = Dimensions.get('window');
+import Countdown from './src/Countdown'
 
-
-const COUNT_DOWN_SECS = 3;
-const MOTION_INTERVAL = 500; //ms between each device motion reading
+const MOTION_INTERVAL = 2500; //ms between each device motion reading
 const MOTION_TOLERANCE = 1; //allowed variance in acceleration
 const CAMERA_TYPE = Camera.Constants.Type.front;
+
 
 export default function App() {
   const [hasCameraPermission, setCameraPermission] = useState(false);
   const [faceDetecting, setFaceDetecting] = useState(false); //when true, we look for faces
   const [faceDetected, setFaceDetected] = useState(false); //when true, we've found a face
-  const [countDownSeconds, setCountDownSeconds] = useState(COUNT_DOWN_SECS); //current available seconds before photo is taken
   const [countDownStarted, setCountDownStarted] = useState(false); //starts when face detected
   const [detectMotion, setDetectMotion] = useState(false); //when true we attempt to determine if device is still
-  const [motion, setMotion] = useState(); //captures the reading of the device motion
-  const prevMotion = useRef();
-  const countDownTimer = useRef();
-  const motionListener = useRef();
   const didMount = useRef(false);
+  const [camera, setCamera] = useState(null); // MIGHT BE UNNECESSARY
 
-  handleDetectMotion = (doDetect) => {
+  // MIGHT BE UNNECESSARY - motion check is done only before the face is detected for the FIRST time, and countdown is based SOLELY on face detection
+  const [motion, setMotion] = useState();
+  const prevMotion = useRef();
+  const motionListener = useRef();
+
+  // Screen Ratio and image padding
+  const [imagePadding, setImagePadding] = useState(0);
+  const [ratio, setRatio] = useState('4:3');  // default is 4:3
+  const { height, width } = Dimensions.get('window');
+  const screenRatio = height / width;
+  const [isRatioSet, setIsRatioSet] =  useState(false);
+
+  // set the camera ratio and padding.
+  // this code assumes a portrait mode screen
+  const prepareRatio = async () => {
+    let desiredRatio = '4:3';  // Start with the system default
+    // This issue only affects Android
+    if (Platform.OS === 'android') {
+      const ratios = await camera.getSupportedRatiosAsync();
+
+      // Calculate the width/height of each of the supported camera ratios
+      // These width/height are measured in landscape mode
+      // find the ratio that is closest to the screen ratio without going over
+      let distances = {};
+      let realRatios = {};
+      let minDistance = null;
+      for (const ratio of ratios) {
+        const parts = ratio.split(':');
+        const realRatio = parseInt(parts[0]) / parseInt(parts[1]);
+        realRatios[ratio] = realRatio;
+        // ratio can't be taller than screen, so we don't want an abs()
+        const distance = screenRatio - realRatio;
+        distances[ratio] = realRatio;
+        if (minDistance == null) {
+          minDistance = ratio;
+        } else {
+          if (distance >= 0 && distance < distances[minDistance]) {
+            minDistance = ratio;
+          }
+        }
+      }
+      // set the best match
+      desiredRatio = minDistance;
+      //  calculate the difference between the camera width and the screen height
+      const remainder = Math.floor(
+        (height - realRatios[desiredRatio] * width) / 2
+      );
+      // set the preview padding and preview ratio
+      setImagePadding(remainder / 2);
+      setRatio(desiredRatio);
+      // Set a flag so we don't do this
+      // calculation each time the screen refreshes
+      setIsRatioSet(true);
+    }
+  };
+
+  // the camera must be loaded in order to access the supported ratios
+  const setCameraReady = async() => {
+    if (!isRatioSet) {
+      await prepareRatio();
+    }
+  };
+
+  const handleDetectMotion = (doDetect) => {
+    //console.log('doDetect ' + doDetect);
+    //console.log('faceDetecting ' + faceDetecting);
     setDetectMotion(doDetect);
     if (doDetect){
       DeviceMotion.setUpdateInterval(MOTION_INTERVAL);
     }
     else if (!doDetect && faceDetecting) {
+      //console.log('removing listener');
       motionListener.current.remove();
     }
   }
 
-  onDeviceMotion = (rotation) => {
+  const onDeviceMotion = (rotation) => {
+    //console.log('onDeviceMotion ' + rotation);
     setMotion(rotation.accelerationIncludingGravity);
   };
 
   useEffect(() => {
+    //console.log('1st useEffect');
     if (!didMount.current) {
       (async function requestCameraPermission() {
         const { status } = await Permissions.askAsync(Permissions.CAMERA);
@@ -48,12 +111,16 @@ export default function App() {
       didMount.current = true;
     }
 
+
     motionListener.current = DeviceMotion.addListener(onDeviceMotion);
-    motionListener.current.remove();
     handleDetectMotion(true);
   }, []);
 
   useEffect(() => {
+    console.log('2nd useEffect');
+    //console.log('detectMotion ', detectMotion);
+    //console.log('prevMotion ' + prevMotion);
+    //console.log('motion ' + motion);
     if (detectMotion && motion && prevMotion.current){
       if (
       Math.abs(motion.x - prevMotion.current.x) < MOTION_TOLERANCE
@@ -61,8 +128,9 @@ export default function App() {
       && Math.abs(motion.z - prevMotion.current.z) < MOTION_TOLERANCE
       ){
         //still
+        console.log('setting face detecting true');
         setFaceDetecting(true);
-        setDetectMotion(false);
+        handleDetectMotion(false);
       }
     }
     if (motion !== prevMotion.current) {
@@ -70,18 +138,15 @@ export default function App() {
     }
   }, [motion])
 
-  initCountDown = () => {
+  const initCountDown = () => {
     setCountDownStarted(true);
-    countDownTimer.current = setInterval(this.handleCountDownTime, 1000);
   }
 
-  cancelCountDown = () => {
-    clearInterval(countDownTimer.current);
-    setCountDownSeconds(COUNT_DOWN_SECS);
+  const cancelCountDown = () => {
     setCountDownStarted(false);
   }
 
-  handleFacesDetected = ({ faces }) => {
+  const handleFacesDetected = ({ faces }) => {
     if (faces.length === 1) {
         setFaceDetected(true)
         if (!countDownStarted) {
@@ -94,11 +159,12 @@ export default function App() {
     }
   }
 
-  handleFaceDetectionError = () => {
+  const handleFaceDetectionError = () => {
   }
 
   return (
     <View style={styles.container}>
+    <StatusBar hidden />
     {
       hasCameraPermission === null
       ? null
@@ -106,8 +172,13 @@ export default function App() {
         ? <Text style={styles.textStandard}>No access to camera</Text>
         : <View style={styles.container}>
             <Camera
-              style={styles.cameraPreview}
+              style={[styles.cameraPreview, {marginTop: imagePadding, marginBottom: imagePadding}]}
               type={CAMERA_TYPE}
+              onCameraReady={setCameraReady}
+              ratio={ratio}
+              ref={(ref) => {
+                setCamera(ref);
+              }}
               onFacesDetected={faceDetecting ? handleFacesDetected : undefined }
               onFaceDetectionError={handleFaceDetectionError}
               faceDetectorSettings={{
@@ -115,6 +186,9 @@ export default function App() {
                 detectLandmarks: FaceDetector.Constants.Mode.none,
                 runClassifications: FaceDetector.Constants.Mode.all,
               }}>
+              <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+                <Countdown start={countDownStarted}/>
+              </View>
               <View
               style={{
                 flex: 1,
@@ -138,27 +212,15 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#000',
+    justifyContent: 'center'
   },
   textStandard: {
     fontSize: 18,
     marginBottom: 10,
     color: 'black'
   },
-  countdown: {
-    fontSize: 40,
-    color: 'white'
-  },
   cameraPreview: {
-    flex:1,
-    height: winHeight*0.7,
-    width: winWidth,
-    position: 'absolute',
-    left: -205,
-    top: 100,
-    right: 0,
-    bottom: 0,
+    flex:1
   },
 });
