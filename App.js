@@ -3,27 +3,22 @@ import { StyleSheet, Text, View, Dimensions, Platform, StatusBar } from 'react-n
 import * as FaceDetector from 'expo-face-detector';
 import { Camera } from 'expo-camera';
 import * as Permissions from 'expo-permissions';
-import { DeviceMotion } from 'expo-sensors';
-import Countdown from './src/Countdown'
+import Countdown from './src/Countdown';
+//import Stopwatch from './src/Stopwatch';
+//'react-timer-hook'
+import { Stopwatch } from 'rn-stopwatch-timer';
 
-const MOTION_INTERVAL = 2500; //ms between each device motion reading
-const MOTION_TOLERANCE = 1; //allowed variance in acceleration
 const CAMERA_TYPE = Camera.Constants.Type.front;
+const OPEN_EYE_PROBABILITY_THRESHOLD = 0.98;
 
 
 export default function App() {
   const [hasCameraPermission, setCameraPermission] = useState(false);
-  const [faceDetecting, setFaceDetecting] = useState(false); //when true, we look for faces
   const [faceDetected, setFaceDetected] = useState(false); //when true, we've found a face
   const [countDownStarted, setCountDownStarted] = useState(false); //starts when face detected
-  const [detectMotion, setDetectMotion] = useState(false); //when true we attempt to determine if device is still
+  const [isGameStarted, setIsGameStarted] = useState(false);
   const didMount = useRef(false);
   const [camera, setCamera] = useState(null); // MIGHT BE UNNECESSARY
-
-  // MIGHT BE UNNECESSARY - motion check is done only before the face is detected for the FIRST time, and countdown is based SOLELY on face detection
-  const [motion, setMotion] = useState();
-  const prevMotion = useRef();
-  const motionListener = useRef();
 
   // Screen Ratio and image padding
   const [imagePadding, setImagePadding] = useState(0);
@@ -83,23 +78,10 @@ export default function App() {
     }
   };
 
-  const handleDetectMotion = (doDetect) => {
-    //console.log('doDetect ' + doDetect);
-    //console.log('faceDetecting ' + faceDetecting);
-    setDetectMotion(doDetect);
-    if (doDetect){
-      DeviceMotion.setUpdateInterval(MOTION_INTERVAL);
-    }
-    else if (!doDetect && faceDetecting) {
-      //console.log('removing listener');
-      motionListener.current.remove();
-    }
+  const startGame = () => {
+    console.log('start game');
+    setIsGameStarted(true);
   }
-
-  const onDeviceMotion = (rotation) => {
-    //console.log('onDeviceMotion ' + rotation);
-    setMotion(rotation.accelerationIncludingGravity);
-  };
 
   useEffect(() => {
     //console.log('1st useEffect');
@@ -110,33 +92,7 @@ export default function App() {
       })();
       didMount.current = true;
     }
-
-
-    motionListener.current = DeviceMotion.addListener(onDeviceMotion);
-    handleDetectMotion(true);
   }, []);
-
-  useEffect(() => {
-    console.log('2nd useEffect');
-    //console.log('detectMotion ', detectMotion);
-    //console.log('prevMotion ' + prevMotion);
-    //console.log('motion ' + motion);
-    if (detectMotion && motion && prevMotion.current){
-      if (
-      Math.abs(motion.x - prevMotion.current.x) < MOTION_TOLERANCE
-      && Math.abs(motion.y - prevMotion.current.y) < MOTION_TOLERANCE
-      && Math.abs(motion.z - prevMotion.current.z) < MOTION_TOLERANCE
-      ){
-        //still
-        console.log('setting face detecting true');
-        setFaceDetecting(true);
-        handleDetectMotion(false);
-      }
-    }
-    if (motion !== prevMotion.current) {
-        prevMotion.current = motion;
-    }
-  }, [motion])
 
   const initCountDown = () => {
     setCountDownStarted(true);
@@ -148,9 +104,22 @@ export default function App() {
 
   const handleFacesDetected = ({ faces }) => {
     if (faces.length === 1) {
-        setFaceDetected(true)
-        if (!countDownStarted) {
-          initCountDown();
+      console.log(faces[0]);
+      //console.log('LEFT POSITION: ' + faces[0].leftEyePosition);
+      console.log('LEFT PROBABILITY: ' + faces[0].leftEyeOpenProbability);
+      //console.log('LEFT POSITION: ' + faces[0].rightEyePosition);
+      console.log('LEFT PROBABILITY: ' + faces[0].rightEyeOpenProbability);
+      console.log('');
+
+      setFaceDetected(true)
+      if (!countDownStarted) {
+        initCountDown();
+      }
+      if (isGameStarted && faces[0].leftEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD
+        && faces[0].rightEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD) {
+          console.log('stop game');
+          // game and stopwatch should be stopped
+          setIsGameStarted(false);
         }
     }
     else {
@@ -179,15 +148,18 @@ export default function App() {
               ref={(ref) => {
                 setCamera(ref);
               }}
-              onFacesDetected={faceDetecting ? handleFacesDetected : undefined }
+              onFacesDetected={handleFacesDetected}
               onFaceDetectionError={handleFaceDetectionError}
               faceDetectorSettings={{
                 mode: FaceDetector.Constants.Mode.fast,
-                detectLandmarks: FaceDetector.Constants.Mode.none,
-                runClassifications: FaceDetector.Constants.Mode.all,
+                detectLandmarks: FaceDetector.Constants.Landmarks.none,
+                runClassifications: FaceDetector.Constants.Classifications.all,
               }}>
-              <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-                <Countdown start={countDownStarted}/>
+              <View style={{alignItems: 'center'}}>
+                <Stopwatch laps msecs start={isGameStarted} options={options} />
+              </View>
+              <View style={{position: 'absolute', top: 0, right: 0, left:0, bottom: 0, alignItems: 'center', justifyContent: 'center'}}>
+                <Countdown start={countDownStarted} startGame={startGame}/>
               </View>
               <View
               style={{
@@ -224,3 +196,18 @@ const styles = StyleSheet.create({
     flex:1
   },
 });
+
+const options = {
+  container: {
+    backgroundColor: '#0ae',
+    alignItems: 'center',
+    padding: 5,
+    marginTop: 10,
+    borderRadius: 20,
+    width: '50%',
+  },
+  text: {
+    fontSize: 30,
+    color: '#FFF'
+  }
+};

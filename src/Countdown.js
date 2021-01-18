@@ -5,7 +5,7 @@ import useInterval from 'react-useinterval';
 const COUNT_DOWN_SECS = 3;
 
 export default function Countdown(props) {
-  const { start } = props;
+  const { start, startGame } = props;
   if (!start) {
     return <Text></Text>;
   }
@@ -14,6 +14,9 @@ export default function Countdown(props) {
 
   const decreaseCount = () => {
     setCount(count - 1);
+    if (count === 0) {
+      startGame();
+    }
   };
 
   useInterval(decreaseCount, 1000);
