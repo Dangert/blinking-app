@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import CameraWrapper from './CameraWrapper';
 import Countdown from './Countdown';
+import { Camera } from 'expo-camera';
+import * as FaceDetector from 'expo-face-detector';
 
+const CAMERA_TYPE = Camera.Constants.Type.front;
 const OPEN_EYE_PROBABILITY_THRESHOLD = 0.985;
 
 export default function Game(props) {
@@ -46,8 +48,22 @@ export default function Game(props) {
 
   return (
     <View style={styles.container}>
-      <CameraWrapper style={{position: 'relative'}} imagePadding={imagePadding} setCameraReady={setCameraReady} setCamera={setCamera} handleFacesDetected={handleFacesDetected}
-      handleFaceDetectionError={handleFaceDetectionError} countDownStarted={countDownStarted} />
+      <Camera
+        style={[styles.cameraPreview, {marginTop: imagePadding, marginBottom: imagePadding}]}
+        type={CAMERA_TYPE}
+        onCameraReady={setCameraReady}
+        ratio={ratio}
+        ref={(ref) => {
+          setCamera(ref);
+        }}
+        onFacesDetected={handleFacesDetected}
+        onFaceDetectionError={handleFaceDetectionError}
+        faceDetectorSettings={{
+          mode: FaceDetector.Constants.Mode.fast,
+          detectLandmarks: FaceDetector.Constants.Landmarks.none,
+          runClassifications: FaceDetector.Constants.Classifications.all,
+        }}>
+      </Camera>
       <View style={{position: 'absolute', top: 0, right: 0, left:0, bottom: 0, alignItems: 'center', justifyContent: 'center'}}>
         <Countdown start={countDownStarted} startStopwatch={() => setIsStopwatchStarted(true)}/>
       </View>
@@ -57,8 +73,9 @@ export default function Game(props) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center'
+    flex: 1
+  },
+  cameraPreview: {
+    flex:1
   }
 });

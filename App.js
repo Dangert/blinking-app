@@ -97,7 +97,7 @@ export default function App() {
       : hasCameraPermission === false
         ? <Text style={styles.textStandard}>No access to camera</Text>
         : <View style={styles.container}>
-            <Game imagePadding={imagePadding}  ratio={ratio} setCameraReady={setCameraReady} setCamera={setCamera}
+            <Game style={{display: 'none'}} imagePadding={imagePadding}  ratio={ratio} setCameraReady={setCameraReady} setCamera={setCamera}
             isStopwatchStarted={isStopwatchStarted} setIsStopwatchStarted={setIsStopwatchStarted} />
             <View style={{alignItems: 'center', marginTop:20, position: 'absolute', bottom: 0, top: 0, left: 0, right: 0}}>
               <Stopwatch laps msecs start={isStopwatchStarted} options={stopwatchStyles} />
