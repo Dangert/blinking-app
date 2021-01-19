@@ -1,24 +1,16 @@
 import React, { useEffect, useState, useRef } from "react";
 import { StyleSheet, Text, View, Dimensions, Platform, StatusBar } from 'react-native';
-import * as FaceDetector from 'expo-face-detector';
-import { Camera } from 'expo-camera';
 import * as Permissions from 'expo-permissions';
-import Countdown from './src/Countdown';
-//import Stopwatch from './src/Stopwatch';
+import Game from './src/Game';
 //'react-timer-hook'
 import { Stopwatch } from 'rn-stopwatch-timer';
-
-const CAMERA_TYPE = Camera.Constants.Type.front;
-const OPEN_EYE_PROBABILITY_THRESHOLD = 0.98;
 
 
 export default function App() {
   const [hasCameraPermission, setCameraPermission] = useState(false);
-  const [faceDetected, setFaceDetected] = useState(false); //when true, we've found a face
-  const [countDownStarted, setCountDownStarted] = useState(false); //starts when face detected
-  const [isGameStarted, setIsGameStarted] = useState(false);
+  const [isStopwatchStarted, setIsStopwatchStarted] = useState(false);
   const didMount = useRef(false);
-  const [camera, setCamera] = useState(null); // MIGHT BE UNNECESSARY
+  const [camera, setCamera] = useState(null);
 
   // Screen Ratio and image padding
   const [imagePadding, setImagePadding] = useState(0);
@@ -67,6 +59,8 @@ export default function App() {
       setRatio(desiredRatio);
       // Set a flag so we don't do this
       // calculation each time the screen refreshes
+      console.log(desiredRatio);
+      console.log(remainder / 2);
       setIsRatioSet(true);
     }
   };
@@ -78,9 +72,9 @@ export default function App() {
     }
   };
 
-  const startGame = () => {
+  const startStopwatch = () => {
     console.log('start game');
-    setIsGameStarted(true);
+    setIsStopwatchStarted(true);
   }
 
   useEffect(() => {
@@ -94,43 +88,6 @@ export default function App() {
     }
   }, []);
 
-  const initCountDown = () => {
-    setCountDownStarted(true);
-  }
-
-  const cancelCountDown = () => {
-    setCountDownStarted(false);
-  }
-
-  const handleFacesDetected = ({ faces }) => {
-    if (faces.length === 1) {
-      console.log(faces[0]);
-      //console.log('LEFT POSITION: ' + faces[0].leftEyePosition);
-      console.log('LEFT PROBABILITY: ' + faces[0].leftEyeOpenProbability);
-      //console.log('LEFT POSITION: ' + faces[0].rightEyePosition);
-      console.log('LEFT PROBABILITY: ' + faces[0].rightEyeOpenProbability);
-      console.log('');
-
-      setFaceDetected(true)
-      if (!countDownStarted) {
-        initCountDown();
-      }
-      if (isGameStarted && faces[0].leftEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD
-        && faces[0].rightEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD) {
-          console.log('stop game');
-          // game and stopwatch should be stopped
-          setIsGameStarted(false);
-        }
-    }
-    else {
-      setFaceDetected(false);
-      cancelCountDown();
-    }
-  }
-
-  const handleFaceDetectionError = () => {
-  }
-
   return (
     <View style={styles.container}>
     <StatusBar hidden />
@@ -140,41 +97,11 @@ export default function App() {
       : hasCameraPermission === false
         ? <Text style={styles.textStandard}>No access to camera</Text>
         : <View style={styles.container}>
-            <Camera
-              style={[styles.cameraPreview, {marginTop: imagePadding, marginBottom: imagePadding}]}
-              type={CAMERA_TYPE}
-              onCameraReady={setCameraReady}
-              ratio={ratio}
-              ref={(ref) => {
-                setCamera(ref);
-              }}
-              onFacesDetected={handleFacesDetected}
-              onFaceDetectionError={handleFaceDetectionError}
-              faceDetectorSettings={{
-                mode: FaceDetector.Constants.Mode.fast,
-                detectLandmarks: FaceDetector.Constants.Landmarks.none,
-                runClassifications: FaceDetector.Constants.Classifications.all,
-              }}>
-              <View style={{alignItems: 'center'}}>
-                <Stopwatch laps msecs start={isGameStarted} options={options} />
-              </View>
-              <View style={{position: 'absolute', top: 0, right: 0, left:0, bottom: 0, alignItems: 'center', justifyContent: 'center'}}>
-                <Countdown start={countDownStarted} startGame={startGame}/>
-              </View>
-              <View
-              style={{
-                flex: 1,
-                backgroundColor: 'transparent',
-                flexDirection: 'row',
-                position: 'absolute',
-                bottom: 0,
-              }}>
-                <Text
-                  style={styles.textStandard}>
-                  {faceDetected ? 'Face Detected' : 'No Face Detected'}
-                </Text>
-              </View>
-            </Camera>
+            <Game imagePadding={imagePadding}  ratio={ratio} setCameraReady={setCameraReady} setCamera={setCamera}
+            isStopwatchStarted={isStopwatchStarted} setIsStopwatchStarted={setIsStopwatchStarted} />
+            <View style={{alignItems: 'center', marginTop:20, position: 'absolute', bottom: 0, top: 0, left: 0, right: 0}}>
+              <Stopwatch laps msecs start={isStopwatchStarted} options={stopwatchStyles} />
+            </View>
           </View>
     }
     </View>
@@ -191,13 +118,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: 10,
     color: 'black'
-  },
-  cameraPreview: {
-    flex:1
-  },
+  }
 });
 
-const options = {
+const stopwatchStyles = {
   container: {
     backgroundColor: '#0ae',
     alignItems: 'center',

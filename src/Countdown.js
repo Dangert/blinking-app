@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import useInterval from 'react-useinterval';
 
 const COUNT_DOWN_SECS = 3;
 
 export default function Countdown(props) {
-  const { start, startGame } = props;
+  const { start, startStopwatch } = props;
   if (!start) {
     return <Text></Text>;
   }
@@ -15,7 +15,7 @@ export default function Countdown(props) {
   const decreaseCount = () => {
     setCount(count - 1);
     if (count === 0) {
-      startGame();
+      startStopwatch();
     }
   };
 
@@ -26,6 +26,12 @@ export default function Countdown(props) {
 const styles = StyleSheet.create({
   countdown: {
     fontSize: 100,
+    textShadowColor: 'white',
+    textShadowRadius: 1,
+    textShadowOffset: {
+      width: 1,
+      height: 1
+    },
     color: 'black'
   }
 });
