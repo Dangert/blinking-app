@@ -4,9 +4,11 @@ import * as Permissions from 'expo-permissions';
 import Game from './src/Game';
 //'react-timer-hook'
 import { Stopwatch } from 'rn-stopwatch-timer';
+const Routes = require('./routes.js');
 
 
 export default function App() {
+  const [route, setRoute] = useState(Routes.INSTRUCTIONS);
   const [hasCameraPermission, setCameraPermission] = useState(false);
   const [isStopwatchStarted, setIsStopwatchStarted] = useState(false);
   const didMount = useRef(false);

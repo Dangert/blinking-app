@@ -16,6 +16,7 @@
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-native": "https://github.com/expo/react-native/archive/sdk-40.0.1.tar.gz",
+    "react-native-app-intro-slider": "^4.0.4",
     "react-native-web": "~0.13.12",
     "react-useinterval": "^1.0.2",
     "rn-stopwatch-timer": "0.0.23"
