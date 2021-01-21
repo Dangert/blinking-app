@@ -8,8 +8,9 @@ const CAMERA_TYPE = Camera.Constants.Type.front;
 const OPEN_EYE_PROBABILITY_THRESHOLD = 0.985;
 
 export default function Game(props) {
-  const { imagePadding, ratio, setCameraReady, setCamera, isStopwatchStarted, setIsStopwatchStarted } = props;
+  const { imagePadding, ratio, setCameraReady, stopwatchStart, startStopwatch, stopStopwatch, setRouteToRestart } = props;
   const [countDownStarted, setCountDownStarted] = useState(false); //starts when face detected
+  const [camera, setCamera] = useState(null);
 
   const initCountDown = () => {
     setCountDownStarted(true);
@@ -19,8 +20,13 @@ export default function Game(props) {
     setCountDownStarted(false);
   }
 
+  const endGame = () => {
+    stopStopwatch();
+    setRouteToRestart();
+  }
+
   const handleFacesDetected = ({ faces }) => {
-    if (faces.length === 1) { // face is detected
+    if (faces.length === 1) { // face and eyes are detected
       console.log(faces[0]);
       //console.log('LEFT POSITION: ' + faces[0].leftEyePosition);
       console.log('LEFT PROBABILITY: ' + faces[0].leftEyeOpenProbability);
@@ -31,15 +37,23 @@ export default function Game(props) {
       if (!countDownStarted) {
         initCountDown();
       }
-      if (isStopwatchStarted && faces[0].leftEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD
-        && faces[0].rightEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD) {
+      if (stopwatchStart &&
+        (
+          (!faces[0].leftEyeOpenProbability || !faces[0].rightEyeOpenProbability) ||
+          (faces[0].leftEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD || faces[0].rightEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD)
+        )) {
           console.log('stop game');
           // game and stopwatch should be stopped
-          setIsStopwatchStarted(false);
+          endGame();
         }
     }
     else {
-      cancelCountDown();
+      if (countDownStarted) {
+        cancelCountDown();
+      }
+      if (stopwatchStart) {
+        endGame();
+      }
     }
   }
 
@@ -51,7 +65,7 @@ export default function Game(props) {
       <Camera
         style={[styles.cameraPreview, {marginTop: imagePadding, marginBottom: imagePadding}]}
         type={CAMERA_TYPE}
-        onCameraReady={setCameraReady}
+        onCameraReady={() => setCameraReady(camera)}
         ratio={ratio}
         ref={(ref) => {
           setCamera(ref);
@@ -65,7 +79,7 @@ export default function Game(props) {
         }}>
       </Camera>
       <View style={{position: 'absolute', top: 0, right: 0, left:0, bottom: 0, alignItems: 'center', justifyContent: 'center'}}>
-        <Countdown start={countDownStarted} startStopwatch={() => setIsStopwatchStarted(true)}/>
+        <Countdown start={countDownStarted} startStopwatch={startStopwatch}/>
       </View>
     </View>
   )

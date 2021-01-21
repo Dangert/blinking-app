@@ -1,8 +1,8 @@
 const Routes = {
-  INSTUCTIONS: 'instructions',
+  INTRO: 'intro',
   START: 'start',
   GAME: 'game',
-  RESTART: 'signup'
+  RESTART: 'restart'
 }
 /*
 Object.freeze(ROUTES)
