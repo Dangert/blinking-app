@@ -3,20 +3,17 @@ import { StyleSheet, Text, View, Dimensions, Platform, StatusBar, TouchableOpaci
 import * as Permissions from 'expo-permissions';
 import Game from './src/Game';
 import IntroSliderWrapper from './src/IntroSliderWrapper';
-//'react-timer-hook'
-import { Stopwatch } from 'rn-stopwatch-timer';
+import { useStopwatch } from './src/customHooks';
+import { formatTime } from './src/utils';
 const Routes = require('./src/routes.js');
-const regex = new RegExp(':', 'g'); // for comparing stopwatch times
 const { height, width } = Dimensions.get('window');
 
 export default function App() {
-  const [route, setRoute] = useState(Routes.GAME);
+  const [route, setRoute] = useState(Routes.INTRO);
   const [hasCameraPermission, setCameraPermission] = useState(false);
-  const [stopwatchStart, setStopwatchStart] = useState(false);
-  const [stopwatchReset, setStopwatchReset] = useState(false);
-  const stopwatchTime = useRef();
-  const recordTime = useRef('0');
+  const recordTime = useRef(0);
   const didMount = useRef(false);
+  const { isRunning, elapsedTime, startStopwatch, stopStopwatch, resetStopwatch } = useStopwatch();
 
   // Screen Ratio and image padding
   const [imagePadding, setImagePadding] = useState(0);
@@ -75,35 +72,13 @@ export default function App() {
     }
   };
 
-  const startStopwatch = () => {
-    console.log('start game');
-    setStopwatchStart(true);
-  }
-
-  const stopStopwatch = () => {
-    console.log('stop game');
-    setStopwatchReset(false);
-    setStopwatchStart(false);
-  }
-
-  const resetStopwatch = () => {
-    console.log('reset game');
-    setStopwatchReset(true);
-  }
-
   const setRecordBroken = () => {
-    console.log(stopwatchTime.current);
-    console.log(recordTime.current);
-    if (parseInt(stopwatchTime.current.replace(regex, ''), 10) > parseInt(recordTime.current.replace(regex, ''), 10)){
-      recordTime.current = stopwatchTime.current;
+    if (parseInt(elapsedTime) > parseInt(recordTime.current)){
+      console.log('setting record');
+      recordTime.current = elapsedTime;
       return true;
     }
     return false;
-  }
-
-  const getFormattedTime = (time) => {
-    console.log('get time');
-    stopwatchTime.current = time;
   }
 
   const getResultText = (isFirstTime, isRecordBroken) => {
@@ -138,35 +113,43 @@ export default function App() {
     console.log(route)
     switch(route) {
       case Routes.INTRO:
-        return <IntroSliderWrapper setRouteToGame={() => setRoute(Routes.GAME)}/>
+        return <IntroSliderWrapper setRouteToGame={restartGame}/>
       case Routes.START:
-        return null;
+        return (
+          <View style={[styles.container, styles.startContainer]}>
+            <TouchableOpacity style={styles.button} onPress={() => setRoute(Routes.INTRO)}>
+              <Text style={{fontSize: 20, color: '#000'}}>?</Text>
+            </TouchableOpacity>
+            <Text style={[styles.text, {flex:1, fontSize: 25, fontWeight:'bold'}]}>Welcome back!</Text>
+            <View style={{flex: 1}}>
+              <Text style={styles.text}>Your record</Text>
+              <Text style={[styles.text, styles.recordTime]}>{formatTime(recordTime.current)}</Text>
+            </View>
+            <TouchableOpacity style={styles.button} onPress={restartGame}>
+              <Text style={{fontSize: 20, color: '#000'}}>Play</Text>
+            </TouchableOpacity>
+          </View>
+        );
       case Routes.GAME:
         return (
           <View style={styles.gameContainer}>
-            <Game style={{display: 'none'}} imagePadding={imagePadding}  ratio={ratio} setCameraReady={setCameraReady} stopwatchStart={stopwatchStart}
+            <Game style={{display: 'none'}} imagePadding={imagePadding}  ratio={ratio} setCameraReady={setCameraReady} isStopwatchActive={isRunning}
             startStopwatch={startStopwatch} stopStopwatch={stopStopwatch} setRouteToRestart={() => setRoute(Routes.RESTART)} />
-            <View style={{alignItems: 'center', marginTop:20, position: 'absolute', bottom: 0, top: 0, left: 0, right: 0}}>
-              <Stopwatch laps msecs start={stopwatchStart} options={stopwatchStyles} getTime={getFormattedTime} reset={stopwatchReset}/>
-            </View>
           </View>
         )
       default: //Routes.RESTART
         const prevRecordTime = recordTime.current;
-        console.log(prevRecordTime === '0');
-        const isFirstTime = prevRecordTime === '0';
+        console.log(prevRecordTime === 0);
+        const isFirstTime = prevRecordTime === 0;
         const isRecordBroken = setRecordBroken();
         return (
           <View style={[styles.container, styles.startContainer]}>
             <View style={{flex: 1.5}}>
             </View>
-            <View style={{alignItems: 'center', marginTop:20, position: 'absolute', bottom: 0, top: 0, left: 0, right: 0}}>
-              <Stopwatch laps msecs start={stopwatchStart} options={{...stopwatchStyles, ...{width:'80%'}}} reset={stopwatchReset}/>
-            </View>
             <Text style={[styles.text, {flex:1, fontSize: 25, fontWeight:'bold'}]}>{getResultText(isFirstTime, isRecordBroken)}</Text>
             <View style={{flex: 1}}>
               <Text style={styles.text}>Your {isRecordBroken && !isFirstTime ? 'old ' : null}record</Text>
-              <Text style={[styles.text, styles.recordTime]}>{isFirstTime ? recordTime.current : prevRecordTime}</Text>
+              <Text style={[styles.text, styles.recordTime]}>{isFirstTime ? formatTime(recordTime.current) : formatTime(prevRecordTime)}</Text>
             </View>
             <TouchableOpacity style={styles.button} onPress={restartGame}>
               <Text style={{fontSize: 20, color: '#000'}}>Play again</Text>
@@ -185,6 +168,13 @@ export default function App() {
       : hasCameraPermission === false
         ? <Text style={styles.textStandard}>No access to camera</Text>
         : renderRoute()
+    }
+    {
+      [Routes.GAME, Routes.RESTART].includes(route)
+      ? <View style={styles.stopWatchContainer}>
+          <Text style={styles.stopwatchText}>{formatTime(elapsedTime)}</Text>
+        </View>
+      : null
     }
     </View>
   );
@@ -228,20 +218,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 5,
     paddingHorizontal: 20
-  }
-});
-
-const stopwatchStyles = {
-  container: {
+  },
+  stopWatchContainer: {
     backgroundColor: '#0f4676',
     alignItems: 'center',
     padding: 5,
-    marginTop: 10,
+    marginTop: 20,
     borderRadius: 20,
     width: '50%',
+    position: 'absolute',
+    top: 0, left: '25%'
   },
-  text: {
+  stopwatchText: {
     fontSize: 30,
     color: '#FFF'
   }
-};
+});
