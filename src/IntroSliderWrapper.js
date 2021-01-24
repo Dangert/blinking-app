@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Image, Text, Dimensions } from 'react-native';
 import AppIntroSlider from 'react-native-app-intro-slider';
+import { RFValue } from "react-native-responsive-fontsize";
 import eyeIcon from './assets/eye_icon.png'
 
 const { height, width } = Dimensions.get('window');
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
   },
   text: {
     flex: 1,
-    fontSize: 20,
+    fontSize: RFValue(20),
     marginLeft: 0.1*width,
     marginRight: 0.1*width,
     textAlign: 'center'

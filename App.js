@@ -5,11 +5,13 @@ import Game from './src/Game';
 import IntroSliderWrapper from './src/IntroSliderWrapper';
 import { useStopwatch } from './src/customHooks';
 import { formatTime } from './src/utils';
+import * as Animatable from 'react-native-animatable';
+import { RFValue } from "react-native-responsive-fontsize";
 const Routes = require('./src/routes.js');
 const { height, width } = Dimensions.get('window');
 
 export default function App() {
-  const [route, setRoute] = useState(Routes.INTRO);
+  const [route, setRoute] = useState(Routes.GAME);
   const [hasCameraPermission, setCameraPermission] = useState(false);
   const recordTime = useRef(0);
   const didMount = useRef(false);
@@ -109,6 +111,33 @@ export default function App() {
     }
   }, []);
 
+  const renderRecord = (time, isOld=false) => {
+    return (
+      <View style={{flex: 1}}>
+        <Text style={styles.text}>Your {isOld ? 'old ' : null}record</Text>
+        <Text style={[styles.text, styles.recordTime]}>{formatTime(time)}</Text>
+      </View>
+    )
+  }
+
+  const renderPlayButton = (isRestart=false) => {
+    return (
+      <TouchableOpacity style={styles.button} onPress={restartGame}>
+        <Text style={{fontSize: RFValue(20), color: '#02245a'}}>Play{isRestart ? ' again' : null}</Text>
+      </TouchableOpacity>
+    )
+  }
+
+  const renderStopwatch = () => {
+    const stopwatchContainerStyle = route === Routes.GAME ? styles.stopwatchGame : styles.stopwatchOnRestart;
+    const extraTextStyle = route === Routes.GAME ? styles.stopwatchOnGameText : styles.stopwatchOnRestartText;
+    return (
+      <View style={stopwatchContainerStyle}>
+        <Text style={[styles.stopwatchText, extraTextStyle]}>{formatTime(elapsedTime)}</Text>
+      </View>
+    )
+  }
+
   const renderRoute = () => {
     console.log(route)
     switch(route) {
@@ -117,16 +146,11 @@ export default function App() {
       case Routes.START:
         return (
           <View style={[styles.container, styles.startContainer]}>
-            <TouchableOpacity style={styles.button} onPress={() => setRoute(Routes.INTRO)}>
-              <Text style={{fontSize: 20, color: '#000'}}>?</Text>
-            </TouchableOpacity>
-            <Text style={[styles.text, {flex:1, fontSize: 25, fontWeight:'bold'}]}>Welcome back!</Text>
-            <View style={{flex: 1}}>
-              <Text style={styles.text}>Your record</Text>
-              <Text style={[styles.text, styles.recordTime]}>{formatTime(recordTime.current)}</Text>
-            </View>
-            <TouchableOpacity style={styles.button} onPress={restartGame}>
-              <Text style={{fontSize: 20, color: '#000'}}>Play</Text>
+            <Text style={[styles.text, styles.messageText, {fontSize: RFValue(36), marginTop: height*0.2}]}>Welcome back!</Text>
+            {renderRecord(recordTime.current)}
+            {renderPlayButton()}
+            <TouchableOpacity style={styles.reminderButton} onPress={() => setRoute(Routes.INTRO)}>
+              <Text style={{fontSize: RFValue(12), color: '#fff'}}>Need a Reminder?</Text>
             </TouchableOpacity>
           </View>
         );
@@ -135,6 +159,7 @@ export default function App() {
           <View style={styles.gameContainer}>
             <Game style={{display: 'none'}} imagePadding={imagePadding}  ratio={ratio} setCameraReady={setCameraReady} isStopwatchActive={isRunning}
             startStopwatch={startStopwatch} stopStopwatch={stopStopwatch} setRouteToRestart={() => setRoute(Routes.RESTART)} />
+            {renderStopwatch()}
           </View>
         )
       default: //Routes.RESTART
@@ -144,16 +169,10 @@ export default function App() {
         const isRecordBroken = setRecordBroken();
         return (
           <View style={[styles.container, styles.startContainer]}>
-            <View style={{flex: 1.5}}>
-            </View>
-            <Text style={[styles.text, {flex:1, fontSize: 25, fontWeight:'bold'}]}>{getResultText(isFirstTime, isRecordBroken)}</Text>
-            <View style={{flex: 1}}>
-              <Text style={styles.text}>Your {isRecordBroken && !isFirstTime ? 'old ' : null}record</Text>
-              <Text style={[styles.text, styles.recordTime]}>{isFirstTime ? formatTime(recordTime.current) : formatTime(prevRecordTime)}</Text>
-            </View>
-            <TouchableOpacity style={styles.button} onPress={restartGame}>
-              <Text style={{fontSize: 20, color: '#000'}}>Play again</Text>
-            </TouchableOpacity>
+            {renderStopwatch()}
+            <Text style={[styles.text, styles.messageText, {fontSize: RFValue(28)}]}>{getResultText(isFirstTime, isRecordBroken)}</Text>
+            {renderRecord(isFirstTime ? recordTime.current : prevRecordTime, isRecordBroken && !isFirstTime)}
+            {renderPlayButton(true)}
           </View>
         )
     }
@@ -168,13 +187,6 @@ export default function App() {
       : hasCameraPermission === false
         ? <Text style={styles.textStandard}>No access to camera</Text>
         : renderRoute()
-    }
-    {
-      [Routes.GAME, Routes.RESTART].includes(route)
-      ? <View style={styles.stopWatchContainer}>
-          <Text style={styles.stopwatchText}>{formatTime(elapsedTime)}</Text>
-        </View>
-      : null
     }
     </View>
   );
@@ -192,45 +204,70 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   startContainer: {
-    alignItems: 'center'
+    alignItems: 'center',
+    marginTop: height*0.025
   },
   textStandard: {
-    fontSize: 18,
-    marginBottom: 10,
+    fontSize: RFValue(18),
+    marginBottom: height*0.0125,
     color: 'black'
   },
   button: {
-    marginBottom: 80,
-    alignItems: "center",
-    backgroundColor: "#b8da95",
-    paddingVertical: 15,
-    paddingHorizontal: 80,
-    borderRadius: 50
+    marginBottom: height*0.08,
+    alignItems: 'center',
+    backgroundColor: '#b8da95',
+    paddingVertical: height*0.018,
+    paddingHorizontal: width*0.2,
+    borderRadius: width*0.08
   },
   text: {
-    fontSize: 20,
+    fontSize: RFValue(20),
     marginHorizontal: 0.1*width,
-    textAlign: 'center'
+    textAlign: 'center',
+    color: '#02245a'
   },
   recordTime: {
     backgroundColor: '#c2e0e0',
-    borderRadius: 30,
-    marginTop: 10,
-    paddingVertical: 5,
-    paddingHorizontal: 20
+    borderRadius: width*0.05,
+    marginTop: height*0.01,
+    paddingVertical: height*0.007,
+    paddingHorizontal: width*0.05
   },
-  stopWatchContainer: {
-    backgroundColor: '#0f4676',
-    alignItems: 'center',
-    padding: 5,
-    marginTop: 20,
-    borderRadius: 20,
-    width: '50%',
+  stopwatchGame: {
     position: 'absolute',
-    top: 0, left: '25%'
+    top: 0, left: width*0.25,
+    width: width*0.5,
+    marginTop: height*0.03,
+    alignItems: 'center'
+  },
+  stopwatchOnRestart: {
+    flex: 1.5,
+    justifyContent: 'center'
   },
   stopwatchText: {
-    fontSize: 30,
-    color: '#FFF'
+    backgroundColor: '#0f3166',
+    color: '#FFF',
+    paddingVertical: height*0.007,
+    borderRadius: width*0.05,
+  },
+  stopwatchOnRestartText: {
+    fontSize: RFValue(40),
+    paddingHorizontal: width*0.12
+  },
+  stopwatchOnGameText: {
+    fontSize: RFValue(25),
+    paddingHorizontal: width*0.05
+  },
+  reminderButton: {
+    marginBottom: height*0.02,
+    alignItems: 'center',
+    backgroundColor: '#646868',
+    paddingVertical: height*0.01,
+    paddingHorizontal: width*0.05,
+    borderRadius: width*0.08,
+  },
+  messageText: {
+    flex:1,
+    fontWeight:'bold'
   }
 });

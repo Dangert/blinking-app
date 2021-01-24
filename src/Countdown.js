@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Dimensions } from 'react-native';
+import { RFValue } from "react-native-responsive-fontsize";
 import useInterval from 'react-useinterval';
+const { height, width } = Dimensions.get('window');
 
 const COUNT_DOWN_SECS = 3;
 
@@ -20,18 +22,24 @@ export default function Countdown(props) {
   };
 
   useInterval(decreaseCount, 1000);
-  return <Text style={styles.countdown}>{start && count >= 0 ? count : null}</Text>;
+  return(
+    <View style={styles.container}>
+      <Text style={styles.countdown}>{start && count >= 0 ? count : null}</Text>
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
+  container: {
+    backgroundColor: 'rgba(171, 217, 217, 0.5)',
+    height: 0.5*width,
+    width: 0.5*width,
+    borderRadius: width,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   countdown: {
-    fontSize: 100,
-    textShadowColor: 'white',
-    textShadowRadius: 1,
-    textShadowOffset: {
-      width: 1,
-      height: 1
-    },
-    color: 'black'
+    fontSize: RFValue(100),
+    color: '#17344a'
   }
 });

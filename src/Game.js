@@ -76,7 +76,7 @@ export default function Game(props) {
           runClassifications: FaceDetector.Constants.Classifications.all,
         }}>
       </Camera>
-      <View style={{position: 'absolute', top: 0, right: 0, left:0, bottom: 0, alignItems: 'center', justifyContent: 'center'}}>
+      <View style={styles.countdownContainer}>
         <Countdown start={countDownStarted} startStopwatch={startStopwatch}/>
       </View>
     </View>
@@ -89,5 +89,11 @@ const styles = StyleSheet.create({
   },
   cameraPreview: {
     flex:1
+  },
+  countdownContainer: {
+    position: 'absolute',
+    top: 0, right: 0, left:0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 });
