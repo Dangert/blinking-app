@@ -11,7 +11,7 @@ const Routes = require('./src/routes.js');
 const { height, width } = Dimensions.get('window');
 
 export default function App() {
-  const [route, setRoute] = useState(Routes.GAME);
+  const [route, setRoute] = useState(Routes.INTRO);
   const [hasCameraPermission, setCameraPermission] = useState(false);
   const recordTime = useRef(0);
   const didMount = useRef(false);
@@ -113,27 +113,30 @@ export default function App() {
 
   const renderRecord = (time, isOld=false) => {
     return (
-      <View style={{flex: 1}}>
+      <Animatable.View animation='slideInUp' delay={200} style={{flex: 1}}>
         <Text style={styles.text}>Your {isOld ? 'old ' : null}record</Text>
         <Text style={[styles.text, styles.recordTime]}>{formatTime(time)}</Text>
-      </View>
+      </Animatable.View>
     )
   }
 
   const renderPlayButton = (isRestart=false) => {
     return (
-      <TouchableOpacity style={styles.button} onPress={restartGame}>
-        <Text style={{fontSize: RFValue(20), color: '#02245a'}}>Play{isRestart ? ' again' : null}</Text>
-      </TouchableOpacity>
+      <Animatable.View animation='slideInUp' delay={400}>
+        <TouchableOpacity style={styles.button} onPress={restartGame}>
+          <Text style={{fontSize: RFValue(20), color: '#02245a'}}>Play{isRestart ? ' again' : null}</Text>
+        </TouchableOpacity>
+      </Animatable.View>
     )
   }
 
   const renderStopwatch = () => {
     const stopwatchContainerStyle = route === Routes.GAME ? styles.stopwatchGame : styles.stopwatchOnRestart;
     const extraTextStyle = route === Routes.GAME ? styles.stopwatchOnGameText : styles.stopwatchOnRestartText;
+    const animation = route === Routes.GAME ? '' : 'zoomIn';
     return (
       <View style={stopwatchContainerStyle}>
-        <Text style={[styles.stopwatchText, extraTextStyle]}>{formatTime(elapsedTime)}</Text>
+        <Animatable.Text animation={animation} style={[styles.stopwatchText, extraTextStyle]}>{formatTime(elapsedTime)}</Animatable.Text>
       </View>
     )
   }
@@ -146,11 +149,11 @@ export default function App() {
       case Routes.START:
         return (
           <View style={[styles.container, styles.startContainer]}>
-            <Text style={[styles.text, styles.messageText, {fontSize: RFValue(36), marginTop: height*0.2}]}>Welcome back!</Text>
+            <Animatable.Text animation='slideInUp' style={[styles.text, styles.messageText, {fontSize: RFValue(36), marginTop: height*0.2}]}>Welcome back!</Animatable.Text>
             {renderRecord(recordTime.current)}
             {renderPlayButton()}
             <TouchableOpacity style={styles.reminderButton} onPress={() => setRoute(Routes.INTRO)}>
-              <Text style={{fontSize: RFValue(12), color: '#fff'}}>Need a Reminder?</Text>
+              <Animatable.Text animation='slideInUp' style={{fontSize: RFValue(12), color: '#fff'}}>Need a Reminder?</Animatable.Text>
             </TouchableOpacity>
           </View>
         );
@@ -170,7 +173,7 @@ export default function App() {
         return (
           <View style={[styles.container, styles.startContainer]}>
             {renderStopwatch()}
-            <Text style={[styles.text, styles.messageText, {fontSize: RFValue(28)}]}>{getResultText(isFirstTime, isRecordBroken)}</Text>
+            <Animatable.Text animation='slideInUp' style={[styles.text, styles.messageText, {fontSize: RFValue(28)}]}>{getResultText(isFirstTime, isRecordBroken)}</Animatable.Text>
             {renderRecord(isFirstTime ? recordTime.current : prevRecordTime, isRecordBroken && !isFirstTime)}
             {renderPlayButton(true)}
           </View>

@@ -4,11 +4,18 @@ export const useTimer = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerStart = useRef();
+  const _isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+        _isMounted.current = false;
+    }
+  }, []);
 
   useEffect(
     () => {
       let interval;
-      if (isRunning) {
+      if (isRunning && _isMounted) {
         timerStart.current = new Date().getTime();
         interval = setInterval(
           () => {
