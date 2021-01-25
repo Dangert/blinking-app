@@ -69,23 +69,24 @@ export default function Game(props) {
       //console.log('LEFT PROBABILITY: ' + faces[0].rightEyeOpenProbability);
       //console.log('');
 
-      if (!countdownStarted) {
-        initCountdown();
-      }
       if (isStopwatchActive &&
         (
           !faces[0].leftEyeOpenProbability || !faces[0].rightEyeOpenProbability ||
           faces[0].leftEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD || faces[0].rightEyeOpenProbability < OPEN_EYE_PROBABILITY_THRESHOLD
-        )) {
+        ))
+        {
           endGame();
-        }
+      }
+      else if (!countdownStarted) {
+        initCountdown();
+      }
     }
     else {
-      if (countdownStarted) {
-        clearCountdown();
-      }
       if (isStopwatchActive) {
         endGame();
+      }
+      else if (countdownStarted) {
+        clearCountdown();
       }
     }
   }
@@ -114,7 +115,7 @@ export default function Game(props) {
       {
         countdownStarted && countdown >= 0 ?
         <View style={styles.countdownContainer}>
-          <Animatable.View animation='bounceIn' duration={950} iterationCount={COUNT_DOWN_SECS+1} style={styles.countdownAnimContainer}>
+          <Animatable.View animation='bounceIn' duration={1000} iterationCount={COUNT_DOWN_SECS+1} style={styles.countdownAnimContainer}>
             <Text style={styles.countdown}>{countdown > 0 ? countdown : 'Go'}</Text>
           </Animatable.View>
         </View>

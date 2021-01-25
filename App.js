@@ -7,8 +7,11 @@ import { useStopwatch } from './src/customHooks';
 import { formatTime } from './src/utils';
 import * as Animatable from 'react-native-animatable';
 import { RFValue } from "react-native-responsive-fontsize";
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
 const Routes = require('./src/routes.js');
 const { height, width } = Dimensions.get('window');
+const STORAGE_KEY = '@save_record'
 
 export default function App() {
   const [route, setRoute] = useState(Routes.INTRO);
@@ -76,8 +79,9 @@ export default function App() {
 
   const setRecordBroken = () => {
     if (parseInt(elapsedTime) > parseInt(recordTime.current)){
-      console.log('setting record');
+      //console.log('setting record');
       recordTime.current = elapsedTime;
+      saveRecord();
       return true;
     }
     return false;
@@ -100,6 +104,28 @@ export default function App() {
     setRoute(Routes.GAME);
   }
 
+  const saveRecord = async () => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, recordTime.current);
+    } catch (e) {
+      alert('Failed to save your record');
+    }
+  }
+
+  const readRecord = async () => {
+    try {
+      const record = await AsyncStorage.getItem(STORAGE_KEY);
+
+      if (record !== null) {
+        recordTime.current = record;
+        return true;
+      }
+    } catch (e) {
+      alert('Failed to fetch your record');
+    }
+    return false;
+  }
+
   useEffect(() => {
     //console.log('1st useEffect');
     if (!didMount.current) {
@@ -108,6 +134,10 @@ export default function App() {
         setCameraPermission(status === 'granted');
       })();
       didMount.current = true;
+    }
+    const hasRecord = readRecord();
+    if (hasRecord) {
+      setRoute(Routes.START);
     }
   }, []);
 
@@ -142,7 +172,7 @@ export default function App() {
   }
 
   const renderRoute = () => {
-    console.log(route)
+    //console.log(route)
     switch(route) {
       case Routes.INTRO:
         return <IntroSliderWrapper setRouteToGame={restartGame}/>
@@ -167,7 +197,7 @@ export default function App() {
         )
       default: //Routes.RESTART
         const prevRecordTime = recordTime.current;
-        console.log(prevRecordTime === 0);
+        //console.log(prevRecordTime === 0);
         const isFirstTime = prevRecordTime === 0;
         const isRecordBroken = setRecordBroken();
         return (
