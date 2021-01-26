@@ -79,7 +79,6 @@ export default function App() {
 
   const setRecordBroken = () => {
     if (parseInt(elapsedTime) > parseInt(recordTime.current)){
-      //console.log('setting record');
       recordTime.current = elapsedTime;
       saveRecord();
       return true;
@@ -115,7 +114,6 @@ export default function App() {
   const readRecord = async () => {
     try {
       const record = await AsyncStorage.getItem(STORAGE_KEY);
-      console.log('readRecord: ' + record);
 
       if (record !== null) {
         recordTime.current = record;
@@ -127,7 +125,6 @@ export default function App() {
   }
 
   useEffect(() => {
-    //console.log('1st useEffect');
     if (!didMount.current) {
       (async function requestCameraPermission() {
         const { status } = await Permissions.askAsync(Permissions.CAMERA);
@@ -135,7 +132,7 @@ export default function App() {
       })();
       didMount.current = true;
     }
-    //readRecord();
+    readRecord();
   }, []);
 
   const renderRecord = (time, isOld=false) => {
@@ -179,7 +176,6 @@ export default function App() {
   }
 
   const renderRoute = () => {
-    //console.log(route)
     switch(route) {
       case Routes.INTRO:
         return <IntroSliderWrapper setRouteToGame={restartGame}/>
@@ -202,7 +198,6 @@ export default function App() {
         )
       default: //Routes.RESTART
         const prevRecordTime = recordTime.current;
-        //console.log(prevRecordTime === 0);
         const isFirstTime = prevRecordTime === 0;
         const isRecordBroken = setRecordBroken();
         return (
