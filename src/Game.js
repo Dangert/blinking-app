@@ -4,6 +4,7 @@ import { Camera } from 'expo-camera';
 import * as FaceDetector from 'expo-face-detector';
 import { RFValue } from "react-native-responsive-fontsize";
 import * as Animatable from 'react-native-animatable';
+import { useKeepAwake } from 'expo-keep-awake';
 
 const { height, width } = Dimensions.get('window');
 const CAMERA_TYPE = Camera.Constants.Type.front;
@@ -34,7 +35,7 @@ export default function Game(props) {
   }, [countdownStarted])
 
   useEffect(() => {
-    if (countdown === 0) {
+    if (countdown === -1) {
       startStopwatch();
     }
   }, [countdown])
@@ -94,6 +95,7 @@ export default function Game(props) {
   const handleFaceDetectionError = () => {
   }
 
+  useKeepAwake();
   return (
     <View style={styles.container}>
       <Camera

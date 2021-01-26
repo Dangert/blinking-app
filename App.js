@@ -115,15 +115,15 @@ export default function App() {
   const readRecord = async () => {
     try {
       const record = await AsyncStorage.getItem(STORAGE_KEY);
+      console.log('readRecord: ' + record);
 
       if (record !== null) {
         recordTime.current = record;
-        return true;
+        setRoute(Routes.START);
       }
     } catch (e) {
       alert('Failed to fetch your record');
     }
-    return false;
   }
 
   useEffect(() => {
@@ -135,10 +135,7 @@ export default function App() {
       })();
       didMount.current = true;
     }
-    const hasRecord = readRecord();
-    if (hasRecord) {
-      setRoute(Routes.START);
-    }
+    //readRecord();
   }, []);
 
   const renderRecord = (time, isOld=false) => {
@@ -182,9 +179,11 @@ export default function App() {
             <Animatable.Text animation='slideInUp' style={[styles.text, styles.messageText, {fontSize: RFValue(36), marginTop: height*0.2}]}>Welcome back!</Animatable.Text>
             {renderRecord(recordTime.current)}
             {renderPlayButton()}
-            <TouchableOpacity style={styles.reminderButton} onPress={() => setRoute(Routes.INTRO)}>
-              <Animatable.Text animation='slideInUp' style={{fontSize: RFValue(12), color: '#fff'}}>Need a Reminder?</Animatable.Text>
-            </TouchableOpacity>
+            <Animatable.View delay={600} animation='slideInUp'>
+              <TouchableOpacity style={styles.reminderButton} onPress={() => setRoute(Routes.INTRO)}>
+                <Text style={{fontSize: RFValue(12), color: '#fff'}}>Need a Reminder?</Text>
+              </TouchableOpacity>
+            </Animatable.View>
           </View>
         );
       case Routes.GAME:
@@ -218,7 +217,7 @@ export default function App() {
       hasCameraPermission === null
       ? null
       : hasCameraPermission === false
-        ? <Text style={styles.textStandard}>No access to camera</Text>
+        ? <Text style={[styles.text, {fontWeight: 'bold'}]}>Please grant us access to camera</Text>
         : renderRoute()
     }
     </View>
@@ -241,9 +240,10 @@ const styles = StyleSheet.create({
     marginTop: height*0.025
   },
   textStandard: {
-    fontSize: RFValue(18),
-    marginBottom: height*0.0125,
-    color: 'black'
+    fontSize: RFValue(16),
+    marginHorizontal: width*0.1,
+    color: '#02245a',
+    fontWeight: 'bold'
   },
   button: {
     marginBottom: height*0.08,
