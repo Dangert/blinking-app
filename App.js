@@ -239,12 +239,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: height*0.025
   },
-  textStandard: {
-    fontSize: RFValue(16),
-    marginHorizontal: width*0.1,
-    color: '#02245a',
-    fontWeight: 'bold'
-  },
   button: {
     marginBottom: height*0.08,
     alignItems: 'center',
