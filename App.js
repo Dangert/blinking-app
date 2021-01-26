@@ -168,6 +168,16 @@ export default function App() {
     )
   }
 
+  renderReminder = () => {
+    return (
+      <Animatable.View delay={600} animation='slideInUp'>
+        <TouchableOpacity style={styles.reminderButton} onPress={() => setRoute(Routes.INTRO)}>
+          <Text style={{fontSize: RFValue(12), color: '#fff'}}>Need a Reminder?</Text>
+        </TouchableOpacity>
+      </Animatable.View>
+    )
+  }
+
   const renderRoute = () => {
     //console.log(route)
     switch(route) {
@@ -179,11 +189,7 @@ export default function App() {
             <Animatable.Text animation='slideInUp' style={[styles.text, styles.messageText, {fontSize: RFValue(36), marginTop: height*0.2}]}>Welcome back!</Animatable.Text>
             {renderRecord(recordTime.current)}
             {renderPlayButton()}
-            <Animatable.View delay={600} animation='slideInUp'>
-              <TouchableOpacity style={styles.reminderButton} onPress={() => setRoute(Routes.INTRO)}>
-                <Text style={{fontSize: RFValue(12), color: '#fff'}}>Need a Reminder?</Text>
-              </TouchableOpacity>
-            </Animatable.View>
+            {renderReminder()}
           </View>
         );
       case Routes.GAME:
@@ -205,6 +211,7 @@ export default function App() {
             <Animatable.Text animation='slideInUp' style={[styles.text, styles.messageText, {fontSize: RFValue(28)}]}>{getResultText(isFirstTime, isRecordBroken)}</Animatable.Text>
             {renderRecord(isFirstTime ? recordTime.current : prevRecordTime, isRecordBroken && !isFirstTime)}
             {renderPlayButton(true)}
+            {renderReminder()}
           </View>
         )
     }

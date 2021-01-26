@@ -63,13 +63,6 @@ export default function Game(props) {
 
   const handleFacesDetected = ({ faces }) => {
     if (faces.length === 1) { // face and eyes are detected
-      //console.log(faces[0]);
-      //console.log('LEFT POSITION: ' + faces[0].leftEyePosition);
-      //console.log('LEFT PROBABILITY: ' + faces[0].leftEyeOpenProbability);
-      //console.log('LEFT POSITION: ' + faces[0].rightEyePosition);
-      //console.log('LEFT PROBABILITY: ' + faces[0].rightEyeOpenProbability);
-      //console.log('');
-
       if (isStopwatchActive &&
         (
           !faces[0].leftEyeOpenProbability || !faces[0].rightEyeOpenProbability ||
