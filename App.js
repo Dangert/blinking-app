@@ -1,17 +1,24 @@
 import React, { useEffect, useState, useRef } from "react";
-import { StyleSheet, Text, View, Dimensions, Platform, StatusBar, TouchableOpacity, BackHandler, Animated } from 'react-native';
+import { Text, View, Dimensions, Platform, StatusBar, BackHandler, Animated } from 'react-native';
 import * as Permissions from 'expo-permissions';
 import Game from './src/Game';
+import Record from './src/Record';
+import Stopwatch from './src/Stopwatch';
+import PlayButton from './src/PlayButton';
+import ReminderButton from './src/ReminderButton';
 import IntroSliderWrapper from './src/IntroSliderWrapper';
 import { useStopwatch } from './src/customHooks';
 import { formatTime } from './src/utils';
 import * as Animatable from 'react-native-animatable';
 import { RFValue } from "react-native-responsive-fontsize";
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { styles } from './src/utils/styles';
+import FlashMessage, { showMessage } from "react-native-flash-message";
 
 const Routes = require('./src/routes.js');
 const { height, width } = Dimensions.get('window');
 const STORAGE_KEY = '@save_record';
+const allowExitRoutes = [Routes.START, Routes.RESTART];
 
 export default function App() {
   const [route, setRoute] = useState(Routes.INTRO);
@@ -19,7 +26,6 @@ export default function App() {
   const recordTime = useRef(0);
   const backCount = useRef(0);
   const routeStack = useRef([]);
-  const exitMsgOpacity = useRef(new Animated.Value(0)).current;
   const { isRunning, elapsedTime, startStopwatch, stopStopwatch, resetStopwatch } = useStopwatch();
 
   // Screen Ratio and image padding
@@ -79,26 +85,13 @@ export default function App() {
     }
   };
 
-  const animateExitMsg = () => {
-    Animated.sequence([
-      Animated.timing(exitMsgOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: false
-      }),
-      Animated.timing(exitMsgOpacity, {
-          toValue: 0,
-          delay: 1500,
-          duration: 1000,
-          useNativeDriver: false
-      })
-    ]).start();
-  }
-
-  const _setRoute = (newRoute) => {
-    routeStack.current.push(route); // current route
+  const _setRoute = (newRoute, push=true) => {
+    if (push) {
+      routeStack.current.push(route); // current route
+    }
     backCount.current = 0;
     setRoute(newRoute);
+    showMessage({message: 'Tap again to exit', type: 'singleLine', color: 'black', backgroundColor: 'white'});
   }
 
   const setRecordBroken = () => {
@@ -149,10 +142,10 @@ export default function App() {
   }
 
   const backAction = () => {
-    if ([Routes.RESTART, Routes.START].includes(route) || routeStack.current.length === 0) {
+    if (allowExitRoutes.includes(route) || routeStack.current.length === 0) {
       backCount.current = backCount.current + 1;
       if (backCount.current === 1) {
-        animateExitMsg();
+        showMessage({message: 'Tap again to exit'});
       }
       else {
         routeStack.current = [];
@@ -161,9 +154,8 @@ export default function App() {
       }
     }
     else { // back to prev route
-      backCount.current === 0;
       const prevRoute = routeStack.current.pop();
-      setRoute(prevRoute);
+      _setRoute(prevRoute, false);
     }
   }
 
@@ -183,46 +175,6 @@ export default function App() {
       BackHandler.removeEventListener("hardwareBackPress", backAction);
   }, [route])
 
-  const renderRecord = (time, isOld=false) => {
-    return (
-      <Animatable.View animation='slideInUp' delay={200} style={{flex: 1}}>
-        <Text style={styles.text}>Your {isOld ? 'old ' : null}record</Text>
-        <Text style={[styles.text, styles.recordTime]}>{formatTime(time)}</Text>
-      </Animatable.View>
-    )
-  }
-
-  const renderPlayButton = (isRestart=false) => {
-    return (
-      <Animatable.View animation='slideInUp' delay={400}>
-        <TouchableOpacity style={styles.button} onPress={restartGame}>
-          <Text style={{fontSize: RFValue(20), color: '#02245a'}}>Play{isRestart ? ' again' : null}</Text>
-        </TouchableOpacity>
-      </Animatable.View>
-    )
-  }
-
-  const renderStopwatch = () => {
-    const stopwatchContainerStyle = route === Routes.GAME ? styles.stopwatchGame : styles.stopwatchOnRestart;
-    const extraTextStyle = route === Routes.GAME ? styles.stopwatchOnGameText : styles.stopwatchOnRestartText;
-    const animation = route === Routes.GAME ? '' : 'zoomIn';
-    return (
-      <View style={stopwatchContainerStyle}>
-        <Animatable.Text animation={animation} style={[styles.stopwatchText, extraTextStyle]}>{formatTime(elapsedTime)}</Animatable.Text>
-      </View>
-    )
-  }
-
-  renderReminder = () => {
-    return (
-      <Animatable.View delay={600} animation='slideInUp'>
-        <TouchableOpacity style={styles.reminderButton} onPress={() => _setRoute(Routes.INTRO)}>
-          <Text style={{fontSize: RFValue(12), color: '#fff'}}>Need a Reminder?</Text>
-        </TouchableOpacity>
-      </Animatable.View>
-    )
-  }
-
   const renderRoute = () => {
     switch(route) {
       case Routes.INTRO:
@@ -231,9 +183,9 @@ export default function App() {
         return (
           <View style={[styles.container, styles.startContainer]}>
             <Animatable.Text animation='slideInUp' style={[styles.text, styles.messageText, {fontSize: RFValue(36), marginTop: height*0.2}]}>Welcome back!</Animatable.Text>
-            {renderRecord(recordTime.current)}
-            {renderPlayButton()}
-            {renderReminder()}
+            <Record time={recordTime.current} isOld={false} animDelay={200} />
+            <PlayButton isRestart={false} restartGame={restartGame} animDelay={400} />
+            <ReminderButton setRouteToIntro={() => _setRoute(Routes.INTRO)} animDelay={600} />
           </View>
         );
       case Routes.GAME:
@@ -241,7 +193,7 @@ export default function App() {
           <View style={styles.gameContainer}>
             <Game style={{display: 'none'}} imagePadding={imagePadding}  ratio={ratio} setCameraReady={setCameraReady} isStopwatchActive={isRunning}
             startStopwatch={startStopwatch} stopStopwatch={stopStopwatch} setRouteToRestart={() => _setRoute(Routes.RESTART)} />
-            {renderStopwatch()}
+            <Stopwatch route={route} elapsedTime={elapsedTime} />
           </View>
         )
       default: //Routes.RESTART
@@ -250,11 +202,11 @@ export default function App() {
         const isRecordBroken = setRecordBroken();
         return (
           <View style={[styles.container, styles.startContainer]}>
-            {renderStopwatch()}
+            <Stopwatch route={route} elapsedTime={elapsedTime} />
             <Animatable.Text animation='slideInUp' style={[styles.text, styles.messageText, {fontSize: RFValue(28)}]}>{getResultText(isFirstTime, isRecordBroken)}</Animatable.Text>
-            {renderRecord(isFirstTime ? recordTime.current : prevRecordTime, isRecordBroken && !isFirstTime)}
-            {renderPlayButton(true)}
-            {renderReminder()}
+            <Record time={isFirstTime ? recordTime.current : prevRecordTime} isOld={isRecordBroken && !isFirstTime} animDelay={200} />
+            <PlayButton isRestart={true} restartGame={restartGame} animDelay={400} />
+            <ReminderButton setRouteToIntro={() => _setRoute(Routes.INTRO)} animDelay={600} />
           </View>
         )
     }
@@ -262,101 +214,15 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-    <StatusBar hidden />
-    {
-      hasCameraPermission === null
-      ? null
-      : hasCameraPermission === false
-        ? <Text style={[styles.text, {fontWeight: 'bold'}]}>Please grant us access to camera</Text>
-        : renderRoute()
-    }
-    <Animated.Text style={[styles.exitText, {opacity: exitMsgOpacity}]}>Tap again to exit</Animated.Text>
+      <StatusBar hidden />
+      {
+        hasCameraPermission === null
+        ? null
+        : hasCameraPermission === false
+          ? <Text style={[styles.text, {fontWeight: 'bold'}]}>Please grant us access to camera</Text>
+          : renderRoute()
+      }
+      <FlashMessage style={{alignItems: 'center'}} position={'bottom'}/>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  gameContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#59b2ab',
-    justifyContent: 'center'
-  },
-  startContainer: {
-    alignItems: 'center',
-    marginTop: height*0.025
-  },
-  button: {
-    marginBottom: height*0.08,
-    alignItems: 'center',
-    backgroundColor: '#b8da95',
-    paddingVertical: height*0.018,
-    paddingHorizontal: width*0.2,
-    borderRadius: width*0.08
-  },
-  text: {
-    fontSize: RFValue(20),
-    marginHorizontal: 0.1*width,
-    textAlign: 'center',
-    color: '#02245a'
-  },
-  recordTime: {
-    backgroundColor: '#c2e0e0',
-    borderRadius: width*0.05,
-    marginTop: height*0.01,
-    paddingVertical: height*0.007,
-    paddingHorizontal: width*0.05
-  },
-  stopwatchGame: {
-    position: 'absolute',
-    top: 0, left: width*0.25,
-    width: width*0.5,
-    marginTop: height*0.03,
-    alignItems: 'center'
-  },
-  stopwatchOnRestart: {
-    flex: 1.5,
-    justifyContent: 'center'
-  },
-  stopwatchText: {
-    backgroundColor: '#0f3166',
-    color: '#FFF',
-    paddingVertical: height*0.007,
-    borderRadius: width*0.05,
-  },
-  stopwatchOnRestartText: {
-    fontSize: RFValue(40),
-    paddingHorizontal: width*0.12
-  },
-  stopwatchOnGameText: {
-    fontSize: RFValue(25),
-    paddingHorizontal: width*0.05
-  },
-  reminderButton: {
-    marginBottom: height*0.02,
-    alignItems: 'center',
-    backgroundColor: '#646868',
-    paddingVertical: height*0.01,
-    paddingHorizontal: width*0.05,
-    borderRadius: width*0.08,
-  },
-  messageText: {
-    flex:1,
-    fontWeight:'bold'
-  },
-  exitText: {
-    fontSize: RFValue(12),
-    position: 'absolute',
-    bottom: height*0.074,
-    color: '#000',
-    backgroundColor: '#f2f2f2',
-    borderRadius: width*0.05,
-    paddingVertical: height*0.02,
-    paddingHorizontal: width*0.05,
-    alignSelf: 'center'
-  }
-});
