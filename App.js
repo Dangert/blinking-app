@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Text, View, Dimensions, Platform, StatusBar, BackHandler, Animated } from 'react-native';
+import { Text, View, Dimensions, Platform, StatusBar, BackHandler, Animated, DeviceEventEmitter } from 'react-native';
 import * as Permissions from 'expo-permissions';
 import Game from './src/Game';
 import Record from './src/Record';
@@ -18,7 +18,7 @@ import FlashMessage, { showMessage } from "react-native-flash-message";
 const Routes = require('./src/routes.js');
 const { height, width } = Dimensions.get('window');
 const STORAGE_KEY = '@save_record';
-const allowExitRoutes = [Routes.START, Routes.RESTART];
+const homeRoutes = [Routes.START, Routes.RESTART];
 
 export default function App() {
   const [route, setRoute] = useState(Routes.INTRO);
@@ -27,6 +27,7 @@ export default function App() {
   const backCount = useRef(0);
   const routeStack = useRef([]);
   const { isRunning, elapsedTime, startStopwatch, stopStopwatch, resetStopwatch } = useStopwatch();
+  const backPressSubscriptions = useRef(new Set()); //back handler bug fix
 
   // Screen Ratio and image padding
   const [imagePadding, setImagePadding] = useState(0);
@@ -91,7 +92,6 @@ export default function App() {
     }
     backCount.current = 0;
     setRoute(newRoute);
-    showMessage({message: 'Tap again to exit', type: 'singleLine', color: 'black', backgroundColor: 'white'});
   }
 
   const setRecordBroken = () => {
@@ -142,10 +142,10 @@ export default function App() {
   }
 
   const backAction = () => {
-    if (allowExitRoutes.includes(route) || routeStack.current.length === 0) {
+    if (homeRoutes.includes(route) || routeStack.current.length === 0) {
       backCount.current = backCount.current + 1;
       if (backCount.current === 1) {
-        showMessage({message: 'Tap again to exit'});
+        showMessage({message: 'Tap again to exit', color: 'black', backgroundColor: 'white'});
       }
       else {
         routeStack.current = [];
@@ -159,6 +159,28 @@ export default function App() {
     }
   }
 
+  const setBackPressListeners = () => {
+    DeviceEventEmitter.removeAllListeners('hardwareBackPress');
+    DeviceEventEmitter.addListener('hardwareBackPress', () => {
+      let invokeDefault = true
+      const subscriptions = []
+
+      backPressSubscriptions.current.forEach(sub => subscriptions.push(sub))
+
+      for (let i = 0; i < subscriptions.reverse().length; i += 1) {
+        if (subscriptions[i]()) {
+          invokeDefault = false
+          break
+        }
+      }
+    })
+  }
+
+  const clearBackPressListeners = () => {
+    DeviceEventEmitter.removeAllListeners('hardwareBackPress');
+    backPressSubscriptions.current.clear();
+  }
+
   useEffect(() => {
     (async function requestCameraPermission() {
       const { status } = await Permissions.askAsync(Permissions.CAMERA);
@@ -166,13 +188,18 @@ export default function App() {
     })();
 
     readRecord();
+    setBackPressListeners(); // back handler bug fix
+
+    return () => {
+      clearBackPressListeners(); // back handler bug fix
+    }
   }, []);
 
   useEffect(() => {
-    BackHandler.addEventListener("hardwareBackPress", backAction);
+    backPressSubscriptions.current.add(backAction);
 
     return () =>
-      BackHandler.removeEventListener("hardwareBackPress", backAction);
+      backPressSubscriptions.current.delete(backAction);
   }, [route])
 
   const renderRoute = () => {
