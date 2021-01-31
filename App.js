@@ -97,7 +97,6 @@ export default function App() {
 
   const _setRoute = (newRoute) => {
     routeStack.current.push(route); // current route
-    console.log('stack is: ' + routeStack.current);
     backCount.current = 0;
     setRoute(newRoute);
   }
@@ -150,16 +149,12 @@ export default function App() {
   }
 
   const backAction = () => {
-    console.log('oldRoute: ' + route);
     if ([Routes.RESTART, Routes.START].includes(route) || routeStack.current.length === 0) {
       backCount.current = backCount.current + 1;
-      console.log('backCount is up to: ' + backCount.current);
       if (backCount.current === 1) {
-        console.log("tap again to exit");
         animateExitMsg();
       }
       else {
-        console.log('exiting');
         routeStack.current = [];
         backCount.current = 0;
         BackHandler.exitApp();
@@ -168,7 +163,6 @@ export default function App() {
     else { // back to prev route
       backCount.current === 0;
       const prevRoute = routeStack.current.pop();
-      console.log('going back to: ' + prevRoute);
       setRoute(prevRoute);
     }
   }

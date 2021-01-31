@@ -5,11 +5,14 @@ import * as FaceDetector from 'expo-face-detector';
 import { RFValue } from "react-native-responsive-fontsize";
 import * as Animatable from 'react-native-animatable';
 import { useKeepAwake } from 'expo-keep-awake';
+import { Audio } from 'expo-av';
 
 const { height, width } = Dimensions.get('window');
 const CAMERA_TYPE = Camera.Constants.Type.front;
 const OPEN_EYE_PROBABILITY_THRESHOLD = 0.985;
 const COUNT_DOWN_SECS = 3;
+const countdownNumberSound = require('./assets/countdown_number.wav');
+const countdownGoSound = require('./assets/countdown_go.wav');
 
 export default function Game(props) {
   const { imagePadding, ratio, setCameraReady, isStopwatchActive, startStopwatch, stopStopwatch, setRouteToRestart } = props;
@@ -24,10 +27,17 @@ export default function Game(props) {
     }
   };
 
+  playSound = async (count) => {
+    const soundFile = count > 0 ? countdownNumberSound : countdownGoSound;
+    const { sound } = await Audio.Sound.createAsync(soundFile);
+    await sound.playAsync();
+  }
+
   useEffect(() => {
     if (countdownStarted) {
       const id = setInterval(handleCountdown, 1000);
       countdownRef.current = id;
+      playSound(countdown);
     }
     else {
       clearInterval(countdownRef.current);
@@ -35,7 +45,10 @@ export default function Game(props) {
   }, [countdownStarted])
 
   useEffect(() => {
-    if (countdown === -1) {
+    if (countdownStarted && countdown >= 0) {
+      playSound(countdown);
+    }
+    else if (countdown === -1) {
       startStopwatch();
     }
   }, [countdown])
@@ -43,7 +56,7 @@ export default function Game(props) {
   useEffect(() => {
 
     return (() => {
-      clearInterval(countdownRef.current)
+      clearInterval(countdownRef.current);
     })
   }, [])
 
