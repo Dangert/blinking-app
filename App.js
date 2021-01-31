@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { StyleSheet, Text, View, Dimensions, Platform, StatusBar, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Platform, StatusBar, TouchableOpacity, BackHandler, Animated } from 'react-native';
 import * as Permissions from 'expo-permissions';
 import Game from './src/Game';
 import IntroSliderWrapper from './src/IntroSliderWrapper';
@@ -11,13 +11,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const Routes = require('./src/routes.js');
 const { height, width } = Dimensions.get('window');
-const STORAGE_KEY = '@save_record'
+const STORAGE_KEY = '@save_record';
 
 export default function App() {
   const [route, setRoute] = useState(Routes.INTRO);
   const [hasCameraPermission, setCameraPermission] = useState(false);
   const recordTime = useRef(0);
-  const didMount = useRef(false);
+  const backCount = useRef(0);
+  const routeStack = useRef([]);
+  const exitMsgOpacity = useRef(new Animated.Value(0)).current;
   const { isRunning, elapsedTime, startStopwatch, stopStopwatch, resetStopwatch } = useStopwatch();
 
   // Screen Ratio and image padding
@@ -77,6 +79,29 @@ export default function App() {
     }
   };
 
+  const animateExitMsg = () => {
+    Animated.sequence([
+      Animated.timing(exitMsgOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: false
+      }),
+      Animated.timing(exitMsgOpacity, {
+          toValue: 0,
+          delay: 1500,
+          duration: 1000,
+          useNativeDriver: false
+      })
+    ]).start();
+  }
+
+  const _setRoute = (newRoute) => {
+    routeStack.current.push(route); // current route
+    console.log('stack is: ' + routeStack.current);
+    backCount.current = 0;
+    setRoute(newRoute);
+  }
+
   const setRecordBroken = () => {
     if (parseInt(elapsedTime) > parseInt(recordTime.current)){
       recordTime.current = elapsedTime;
@@ -100,7 +125,7 @@ export default function App() {
 
   const restartGame = () => {
     resetStopwatch();
-    setRoute(Routes.GAME);
+    _setRoute(Routes.GAME);
   }
 
   const saveRecord = async () => {
@@ -117,23 +142,52 @@ export default function App() {
 
       if (record !== null) {
         recordTime.current = record;
-        setRoute(Routes.START);
+        _setRoute(Routes.START);
       }
     } catch (e) {
       alert('Failed to fetch your record');
     }
   }
 
-  useEffect(() => {
-    if (!didMount.current) {
-      (async function requestCameraPermission() {
-        const { status } = await Permissions.askAsync(Permissions.CAMERA);
-        setCameraPermission(status === 'granted');
-      })();
-      didMount.current = true;
+  const backAction = () => {
+    console.log('oldRoute: ' + route);
+    if ([Routes.RESTART, Routes.START].includes(route) || routeStack.current.length === 0) {
+      backCount.current = backCount.current + 1;
+      console.log('backCount is up to: ' + backCount.current);
+      if (backCount.current === 1) {
+        console.log("tap again to exit");
+        animateExitMsg();
+      }
+      else {
+        console.log('exiting');
+        routeStack.current = [];
+        backCount.current = 0;
+        BackHandler.exitApp();
+      }
     }
+    else { // back to prev route
+      backCount.current === 0;
+      const prevRoute = routeStack.current.pop();
+      console.log('going back to: ' + prevRoute);
+      setRoute(prevRoute);
+    }
+  }
+
+  useEffect(() => {
+    (async function requestCameraPermission() {
+      const { status } = await Permissions.askAsync(Permissions.CAMERA);
+      setCameraPermission(status === 'granted');
+    })();
+
     readRecord();
   }, []);
+
+  useEffect(() => {
+    BackHandler.addEventListener("hardwareBackPress", backAction);
+
+    return () =>
+      BackHandler.removeEventListener("hardwareBackPress", backAction);
+  }, [route])
 
   const renderRecord = (time, isOld=false) => {
     return (
@@ -168,7 +222,7 @@ export default function App() {
   renderReminder = () => {
     return (
       <Animatable.View delay={600} animation='slideInUp'>
-        <TouchableOpacity style={styles.reminderButton} onPress={() => setRoute(Routes.INTRO)}>
+        <TouchableOpacity style={styles.reminderButton} onPress={() => _setRoute(Routes.INTRO)}>
           <Text style={{fontSize: RFValue(12), color: '#fff'}}>Need a Reminder?</Text>
         </TouchableOpacity>
       </Animatable.View>
@@ -192,7 +246,7 @@ export default function App() {
         return (
           <View style={styles.gameContainer}>
             <Game style={{display: 'none'}} imagePadding={imagePadding}  ratio={ratio} setCameraReady={setCameraReady} isStopwatchActive={isRunning}
-            startStopwatch={startStopwatch} stopStopwatch={stopStopwatch} setRouteToRestart={() => setRoute(Routes.RESTART)} />
+            startStopwatch={startStopwatch} stopStopwatch={stopStopwatch} setRouteToRestart={() => _setRoute(Routes.RESTART)} />
             {renderStopwatch()}
           </View>
         )
@@ -222,6 +276,7 @@ export default function App() {
         ? <Text style={[styles.text, {fontWeight: 'bold'}]}>Please grant us access to camera</Text>
         : renderRoute()
     }
+    <Animated.Text style={[styles.exitText, {opacity: exitMsgOpacity}]}>Tap again to exit</Animated.Text>
     </View>
   );
 }
@@ -298,5 +353,16 @@ const styles = StyleSheet.create({
   messageText: {
     flex:1,
     fontWeight:'bold'
+  },
+  exitText: {
+    fontSize: RFValue(12),
+    position: 'absolute',
+    bottom: height*0.074,
+    color: '#000',
+    backgroundColor: '#f2f2f2',
+    borderRadius: width*0.05,
+    paddingVertical: height*0.02,
+    paddingHorizontal: width*0.05,
+    alignSelf: 'center'
   }
 });
