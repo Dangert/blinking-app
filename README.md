@@ -1,4 +1,4 @@
-# No Blink (UI)
+# No Blink
 
 ## Summary
 
